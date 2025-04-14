@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')  // Replace with your actual Jenkins credentials ID
-        IMAGE_NAME = 'imagename'  // Replace with your DockerHub username/image name
+        IMAGE_NAME = 'sruthikanneti/cddproject'  // Replace with your DockerHub username/image name
         IMAGE_TAG = "${BUILD_NUMBER}"  // You can use build number or commit hash as image tag
     }
 
