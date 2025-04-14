@@ -2,89 +2,99 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials') // Jenkins credentials ID for DockerHub
-        IMAGE_NAME = 'sruthikanneti/cddproject'
-        IMAGE_TAG = "${BUILD_NUMBER}"
+        DOCKER_HUB = credentials('dockerhub-credentials')
     }
 
     stages {
-
-        stage('Debug: Environment Info') {
+        stage('Checkout') {
             steps {
-                echo "Jenkins Build Number: ${IMAGE_TAG}"
-                echo "Docker Image: ${IMAGE_NAME}:${IMAGE_TAG}"
-                bat 'docker --version'
-                bat 'echo Current directory is: %CD%'
-            }
-        }
-
-        stage('Clone Repository') {
-            steps {
-                echo "Cloning repository..."
                 git branch: 'main', url: 'https://github.com/Sruthi-3-0/cddproject.git'
-                bat 'dir'
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build') {
             steps {
-                echo "Building Docker image: ${IMAGE_NAME}:${IMAGE_TAG}"
-                script {
-                    docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
-                }
-                bat 'docker images'
+                bat 'docker build -t sruthi-cddproject:latest .'
             }
         }
 
-        stage('Push Docker Image to Docker Hub') {
+        stage('Test') {
             steps {
-                echo "Pushing Docker image to Docker Hub..."
                 script {
-                    docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-credentials') {
-                        docker.image("${IMAGE_NAME}:${IMAGE_TAG}").push()
+                    catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+
+                        // Kill any process on port 3000
+                        bat '''
+@echo off
+echo Checking for process using port 3000...
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr :3000') do (
+    echo Found process on port 3000 - PID: %%a
+    taskkill /PID %%a /F
+)
+exit /b 0
+'''
+
+                        // Clean up any existing test container
+                        bat 'docker rm -f test-container || echo "No existing container to remove"'
+
+                        // Start test container
+                        bat 'docker run -d --name test-container -p 3000:80 sruthi-cddproject:latest'
+
+                        // Wait for container to start
+                        sleep(time: 15, unit: 'SECONDS')
+
+                        // Health check with retries
+                        bat '''
+@echo off
+set RETRIES=5
+set WAIT=5
+echo Running health check on http://localhost:3000 ...
+:retry
+curl -f http://localhost:3000
+if %ERRORLEVEL% EQU 0 (
+    echo Health check passed
+    goto success
+) else (
+    echo Health check failed, retrying in %WAIT% seconds...
+    timeout /T %WAIT% >nul
+    set /A RETRIES=%RETRIES%-1
+    if %RETRIES% GTR 0 goto retry
+)
+
+:fail
+echo Health check failed after retries
+exit /b 1
+
+:success
+exit /b 0
+'''
                     }
                 }
-                bat 'docker images'
             }
-        }
 
-        stage('Deploy Docker Container') {
-            steps {
-                script {
-                    echo "Deploying Docker container using image: ${IMAGE_NAME}:${IMAGE_TAG}"
-
-                    // Stop previous container(s) using this image
-                    echo "Stopping existing container(s) with the same image if running..."
+            post {
+                always {
                     bat '''
-                        FOR /F "tokens=*" %%i IN ('docker ps -q --filter "ancestor=%IMAGE_NAME%:%IMAGE_TAG%"') DO (
-                            echo Stopping container ID: %%i
-                            docker stop %%i
-                        )
-                    '''
-
-                    // Run container on port 3001
-                    echo "Starting new container..."
-                    bat "docker run -d -p 3001:80 %IMAGE_NAME%:%IMAGE_TAG%"
-
-                    echo "Application should now be running at: http://localhost:3001"
-                    bat 'docker ps'
+@echo off
+docker logs test-container || echo "No logs found"
+docker stop test-container || echo "Stop failed"
+docker rm test-container || echo "Remove failed"
+'''
                 }
             }
         }
-    }
 
-    post {
-        always {
-            echo 'Cleaning up workspace...'
-            cleanWs()
-        }
-
-        failure {
-            echo '❌ Build failed! Please check the console output and logs.'
-        }
-
-        success {
-            echo '✅ Build and deployment successful!'
+        stage('Deploy') {
+            when {
+                expression {
+                    currentBuild.result == null || currentBuild.result == 'SUCCESS'
+                }
+            }
+            steps {
+                bat 'docker tag sruthi-cddproject:latest %DOCKER_HUB_USR%/sruthi-cddproject:latest'
+                bat 'docker login -u %DOCKER_HUB_USR% -p %DOCKER_HUB_PSW%'
+                bat 'docker push %DOCKER_HUB_USR%/sruthi-cddproject:latest'
+            }
         }
     }
 }
