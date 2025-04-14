@@ -2,16 +2,16 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')  // Replace with your actual Jenkins credentials ID
-        IMAGE_NAME = 'sruthikanneti/cddproject'  // Replace with your DockerHub username/image name
-        IMAGE_TAG = "${BUILD_NUMBER}"  // You can use build number or commit hash as image tag
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')  // Jenkins credentials ID for DockerHub
+        IMAGE_NAME = 'sruthikanneti/cddproject'
+        IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
     stages {
 
         stage('Clone Repository') {
             steps {
-                git branch: 'main', url: 'https://github.com/Sruthi-3-0/cddproject.git'  // Replace with your GitHub repository URL
+                git branch: 'main', url: 'https://github.com/Sruthi-3-0/cddproject.git'
             }
         }
 
@@ -36,7 +36,13 @@ pipeline {
         stage('Deploy Docker Container') {
             steps {
                 script {
-                    sh "docker run -d -p 8080:8080 ${IMAGE_NAME}:${IMAGE_TAG}"
+                    // Stop any previous container using the same image (optional but good practice)
+                    bat 'for /f "tokens=*" %i in (\'docker ps -q --filter "ancestor=%IMAGE_NAME%:%IMAGE_TAG%"\') do docker stop %i'
+
+                    // Run container on port 3001
+                    bat "docker run -d -p 3001:80 %IMAGE_NAME%:%IMAGE_TAG%"
+
+                    echo "Application is now running at: http://localhost:3001"
                 }
             }
         }
@@ -44,7 +50,7 @@ pipeline {
 
     post {
         always {
-            cleanWs()  // Clean workspace after pipeline execution
+            cleanWs()
         }
     }
 }
