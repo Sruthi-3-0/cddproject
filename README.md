@@ -85,10 +85,11 @@ This project demonstrates a full **Continuous Development and Deployment (CDD)**
 flowchart TD
     Developer --> GitHub
     GitHub --> Jenkins
-    Jenkins --> Docker Build
-    Docker Build --> DockerHub
+    Jenkins --> DockerBuild
+    DockerBuild --> DockerHub
     DockerHub --> Render
-    Render --> Live Application
+    Render --> LiveApplication
+
 
 
 
