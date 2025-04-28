@@ -82,15 +82,17 @@ This project demonstrates a full **Continuous Development and Deployment (CDD)**
 
 ## **Final Architecture**
 
-flowchart TD
-    Developer --> GitHub
-    GitHub --> Jenkins
-    Jenkins --> DockerBuild
-    DockerBuild --> DockerHub
-    DockerHub --> Render
-    Render --> LiveApplication
-
-
+Developer  
+   ↓  
+GitHub (Source Code Management)  
+   ↓  
+Jenkins (Build, Test, Push)  
+   ↓  
+DockerHub (Store Docker Images)  
+   ↓  
+Render (Deploy and Host the Application)  
+   ↓  
+Live Application
 
 
 ---
