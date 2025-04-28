@@ -78,20 +78,24 @@ This project demonstrates a full **Continuous Development and Deployment (CDD)**
 - **Render** automatically pulled the Docker image from **DockerHub** and started the deployment.
 - On every new push to DockerHub, **Render** can be manually refreshed or auto-updated to fetch the new image.
 
+---
 
 ## **Final Architecture**
+
 Developer
-   ↓
+↓
 GitHub (Source Code Management)
-   ↓
+↓
 Jenkins (Build, Test, Push)
-   ↓
+↓
 DockerHub (Store Docker Images)
-   ↓
+↓
 Render (Deploy and Host the Application)
-   ↓
+↓
 Live Application
 
+
+---
 
 # Conclusion
 By combining Git, Jenkins, Docker, DockerHub, and Render, a complete automated Continuous Development and Deployment (CDD) pipeline is achieved successfully.
